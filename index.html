@@ -488,17 +488,24 @@
             });
 
             onMounted(() => {
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW 註冊失敗', err));
-                }
-
+                getRedirectResult(auth)
+                    .then((result) => {
+                        if (result && result.user) {
+                            currentUser.value = result.user;
+                            console.log("跳轉登入成功:", result.user.email); }
+                    })
+                    .catch((error) => {
+                        console.error("登入錯誤:", error.message);
+                        alert("登入失敗: " + error.message);
+                    });
+            
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         currentUser.value = user;
-                        loadDataFromFirebase(); 
+                        loadDataFromFirebase();
                     } else {
                         currentUser.value = null;
-                        ui.isLoading = false; 
+                        ui.isLoading = false;
                     }
                 });
             });
