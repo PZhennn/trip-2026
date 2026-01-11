@@ -350,6 +350,10 @@
             const foreignAmount = vueRef(0);
             const tempTripName = vueRef('');
 
+            const login = () => {
+                signInWithRedirect(auth, provider);
+            };
+
             const ui = reactive({ 
                 isLoading: true, 
                 showMemberDropdown: false, 
@@ -360,10 +364,6 @@
             const mediaModal = reactive({ show: false, target: null });
 
             const generateUID = () => Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-
-            const login = () => {
-                signInWithRedirect(auth, provider);
-            };
 
             const updateAllDates = () => {
                 if (itineraries.value.length === 0) return;
