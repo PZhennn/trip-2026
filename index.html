@@ -316,7 +316,7 @@
     import { getDatabase, ref, set, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
     import { 
         getAuth, 
-        signInWithRedirect, 
+        signInWithPopup, 
         GoogleAuthProvider, 
         onAuthStateChanged, 
         getRedirectResult 
@@ -358,7 +358,22 @@
 
             const login = () => {
                 ui.isLoading = true;
-                signInWithRedirect(auth, provider);
+                signInWithPopup(auth, provider)
+                    .then((result) => {
+                        // 登入成功
+                        currentUser.value = result.user;
+                        loadDataFromFirebase();
+                    })
+                    .catch((error) => {
+                        ui.isLoading = false;
+                        console.error("登入失敗:", error);
+                        // Safari 可能會攔截彈窗，提醒使用者
+                        if (error.code === 'auth/popup-blocked') {
+                            alert("請允許 Safari 的彈出視窗以完成登入，或點擊網址列的彈窗圖示。");
+                        } else {
+                            alert("登入錯誤：" + error.message);
+                        }
+                    });
             };
 
             const ui = reactive({ 
@@ -494,21 +509,8 @@
                 for(let k in list) { if(v.includes(k)) { currentRate.value=list[k]; currencySymbol.value=(k==='美'?'$':k==='韓'?'₩':k==='泰'?'฿':k==='歐'?'€':'¥'); break; }}
             });
 
-            onMounted(async () => {
-                ui.isLoading = true; 
-
-                try {
-                    const result = await getRedirectResult(auth);
-                    if (result?.user) {
-                        currentUser.value = result.user;
-                        await loadDataFromFirebase();
-                        ui.isLoading = false;
-                        return; // 如果已經抓到跳轉結果，直接結束
-                    }
-                } catch (error) {
-                    console.error("處理跳轉登入失敗:", error);
-                }
-
+            onMounted(() => {
+                ui.isLoading = true;             
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         currentUser.value = user;
@@ -516,7 +518,7 @@
                     } else {
                         currentUser.value = null;
                     }
-                    ui.isLoading = false; 
+                    ui.isLoading = false;
                 });
             });
 
