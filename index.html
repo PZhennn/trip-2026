@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Trip Planner Pro v21.8 - Final Cloud</title>
     
     <link rel="manifest" href="manifest.json">
@@ -47,256 +47,268 @@
 <div id="app" v-cloak>
     <div v-if="ui.isLoading" class="fixed inset-0 z-[9999] bg-[#e9eff2] flex flex-col items-center justify-center">
         <i class="fas fa-circle-notch fa-spin text-4xl text-[#8ba3b0] mb-4"></i>
-        <p class="text-sm text-slate-400 font-bold tracking-widest uppercase">載入雲端行程中...</p>
+        <p class="text-sm text-slate-400 font-bold tracking-widest uppercase">載入中...</p>
     </div>
 
-    <div v-if="ui.showTripNameModal" class="glass-modal-overlay" @click.self="ui.showTripNameModal = false">
-        <div class="glass-modal-content p-8">
-            <h3 class="text-xl font-bold text-slate-700 mb-6 text-center">編輯行程名稱</h3>
-            <input v-model="tempTripName" type="text" placeholder="輸入名稱" class="w-full text-center font-bold text-lg bg-white/50 p-4 rounded-2xl mb-6 border border-white shadow-sm" @keyup.enter="saveTripName">
-            <div class="flex gap-3">
-                <button @click="ui.showTripNameModal = false" class="flex-1 py-4 rounded-2xl font-bold text-slate-400 bg-white/40">取消</button>
-                <button @click="saveTripName" class="flex-1 py-4 rounded-2xl font-bold text-white btn-primary">儲存</button>
+    <div v-else-if="!currentUser" class="fixed inset-0 bg-[#e9eff2] flex flex-col items-center justify-center p-10 text-center">
+        <div class="mb-8">
+            <i class="fas fa-map-marked-alt text-6xl text-[#5b7482] mb-4"></i>
+            <h2 class="text-2xl font-bold text-slate-700">Trip Planner Pro</h2>
+            <p class="text-slate-400 mt-2">請登入以同步雲端行程</p>
+        </div>
+        <button @click="login" class="btn-primary w-full max-w-xs py-4 rounded-3xl font-bold shadow-xl flex items-center justify-center gap-3">
+            <i class="fab fa-google"></i> 使用 Google 登入
+        </button>
+    </div>
+
+    <div v-else>
+        <div v-if="ui.showTripNameModal" class="glass-modal-overlay" @click.self="ui.showTripNameModal = false">
+            <div class="glass-modal-content p-8">
+                <h3 class="text-xl font-bold text-slate-700 mb-6 text-center">編輯行程名稱</h3>
+                <input v-model="tempTripName" type="text" placeholder="輸入名稱" class="w-full text-center font-bold text-lg bg-white/50 p-4 rounded-2xl mb-6 border border-white shadow-sm" @keyup.enter="saveTripName">
+                <div class="flex gap-3">
+                    <button @click="ui.showTripNameModal = false" class="flex-1 py-4 rounded-2xl font-bold text-slate-400 bg-white/40">取消</button>
+                    <button @click="saveTripName" class="flex-1 py-4 rounded-2xl font-bold text-white btn-primary">儲存</button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div v-if="modal.show" class="glass-modal-overlay" @click.self="modal.show = false">
-        <div class="glass-modal-content p-8">
-            <h3 class="text-xl font-bold text-slate-700 mb-6 text-center">{{ modal.title }}</h3>
-            <input v-model="modal.inputValue" type="text" placeholder="輸入名稱..." class="w-full text-center font-bold text-lg bg-white/50 p-4 rounded-2xl mb-6 border border-white shadow-sm" @keyup.enter="confirmModal">
-            <div class="flex gap-3">
-                <button @click="modal.show = false" class="flex-1 py-4 rounded-2xl font-bold text-slate-400 bg-white/40">取消</button>
-                <button @click="confirmModal" class="flex-1 py-4 rounded-2xl font-bold text-white btn-primary">確定</button>
+        <div v-if="modal.show" class="glass-modal-overlay" @click.self="modal.show = false">
+            <div class="glass-modal-content p-8">
+                <h3 class="text-xl font-bold text-slate-700 mb-6 text-center">{{ modal.title }}</h3>
+                <input v-model="modal.inputValue" type="text" placeholder="輸入名稱..." class="w-full text-center font-bold text-lg bg-white/50 p-4 rounded-2xl mb-6 border border-white shadow-sm" @keyup.enter="confirmModal">
+                <div class="flex gap-3">
+                    <button @click="modal.show = false" class="flex-1 py-4 rounded-2xl font-bold text-slate-400 bg-white/40">取消</button>
+                    <button @click="confirmModal" class="flex-1 py-4 rounded-2xl font-bold text-white btn-primary">確定</button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div v-if="mediaModal.show" class="glass-modal-overlay" @click.self="mediaModal.show = false">
-        <div class="glass-modal-content">
-            <div class="p-8 flex justify-between items-center border-b border-white/50">
-                <div>
-                    <h3 class="text-xl font-bold text-slate-700">附件與連結</h3>
-                    <p class="text-[10px] text-morandi-main font-bold mt-1">{{ mediaModal.target.loc || '未命名地點' }}</p>
-                </div>
-                <button @click="mediaModal.show = false" class="w-10 h-10 rounded-full bg-white/50 flex items-center justify-center text-slate-400"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="flex-1 overflow-y-auto p-8 no-scrollbar space-y-8">
-                <div>
-                    <div class="flex justify-between items-center mb-4">
-                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest">參考照片</label>
-                        <button @click="triggerFile" class="text-[10px] bg-white border border-morandi-light text-morandi-dark px-3 py-1.5 rounded-xl font-bold shadow-sm">+ 新增</button>
-                        <input id="media-file-input" type="file" accept="image/*" class="hidden" @change="handleFileUpload">
+        <div v-if="mediaModal.show" class="glass-modal-overlay" @click.self="mediaModal.show = false">
+            <div class="glass-modal-content">
+                <div class="p-8 flex justify-between items-center border-b border-white/50">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-700">附件與連結</h3>
+                        <p class="text-[10px] text-morandi-main font-bold mt-1">{{ mediaModal.target.loc || '未命名地點' }}</p>
                     </div>
-                    <div class="space-y-4">
-                        <div v-for="(p, idx) in mediaModal.target.photos" :key="idx" class="bg-white/60 rounded-3xl p-3 flex gap-4 shadow-sm border border-white">
-                            <img :src="p.url" class="w-20 h-20 object-cover rounded-2xl shadow-inner bg-slate-100">
-                            <div class="flex-1 flex flex-col justify-between">
-                                <input v-model="p.desc" type="text" placeholder="新增說明..." class="w-full text-xs font-medium bg-transparent border-b border-slate-100 py-1">
-                                <button @click="mediaModal.target.photos.splice(idx, 1)" class="text-[10px] text-red-300 self-end">移除</button>
-                            </div>
+                    <button @click="mediaModal.show = false" class="w-10 h-10 rounded-full bg-white/50 flex items-center justify-center text-slate-400"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-8 no-scrollbar space-y-8">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest">參考照片</label>
+                            <button @click="triggerFile" class="text-[10px] bg-white border border-morandi-light text-morandi-dark px-3 py-1.5 rounded-xl font-bold shadow-sm">+ 新增</button>
+                            <input id="media-file-input" type="file" accept="image/*" class="hidden" @change="handleFileUpload">
                         </div>
-                    </div>
-                </div>
-                <div>
-                    <div class="flex justify-between items-center mb-4">
-                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest">參考連結</label>
-                        <button @click="addLink" class="text-[10px] bg-white border border-morandi-light text-morandi-dark px-3 py-1.5 rounded-xl font-bold shadow-sm">+ 新增</button>
-                    </div>
-                    <div class="space-y-3">
-                        <div v-for="(l, idx) in mediaModal.target.links" :key="idx" class="bg-white/60 rounded-2xl p-4 border border-white shadow-sm">
-                            <div class="flex justify-between items-center mb-2">
-                                <input v-model="l.name" type="text" placeholder="這是什麼" class="w-full text-xs font-bold text-slate-600 bg-transparent">
-                                <button @click="mediaModal.target.links.splice(idx, 1)" class="text-slate-300 ml-2"><i class="fas fa-trash-alt text-xs"></i></button>
-                            </div>
-                            <input v-model="l.url" type="text" placeholder="貼上網址..." class="w-full text-[10px] text-blue-400/70 italic bg-transparent">
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="p-8"><button @click="mediaModal.show = false" class="w-full btn-primary py-4 rounded-2xl font-bold shadow-lg">完成</button></div>
-        </div>
-    </div>
-
-    <div v-if="showWizard && !ui.isLoading" class="fixed inset-0 z-[2000] bg-[#5b7482] flex flex-col items-center justify-center p-10 gap-6">
-        <div class="text-white text-center mb-4"><i class="fas fa-compass text-6xl mb-4"></i><h2 class="text-3xl font-bold tracking-widest uppercase">LET'S GO</h2></div>
-        <input v-model="trip.name" type="text" placeholder="行程名稱" class="w-full max-w-xs p-5 rounded-3xl bg-white text-center font-bold">
-        <input id="wiz-date-range" type="text" placeholder="選擇日期" class="w-full max-w-xs p-5 rounded-3xl bg-white text-center font-bold" readonly>
-        <button @click="startJourney" class="w-full max-w-xs bg-white text-[#5b7482] p-5 rounded-3xl font-black shadow-2xl">START</button>
-    </div>
-
-    <main v-if="!showWizard && !ui.isLoading">
-        <section v-show="activeTab === 'itinerary'" class="p-6">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h2 class="text-3xl font-bold text-slate-700 mb-2">
-                        {{ trip.name || '未命名行程' }}
-                        <i @click="openTripNameModal" class="fas fa-pen-nib edit-icon"></i>
-                    </h2>
-                    <div class="date-adjust-bar shadow-sm" id="date-adjuster">
-                        <i class="far fa-calendar-alt text-morandi-main text-xs"></i>
-                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">設定起始日: {{ formatDateLong(0) }}</span>
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <button @click="sortItems" class="bg-white text-morandi p-3 rounded-2xl shadow-sm"><i class="fas fa-sort-amount-down-alt"></i></button>
-                    <button @click="addDay" class="btn-primary px-5 py-3 rounded-2xl font-bold text-xs">+ 天數</button>
-                </div>
-            </div>
-
-            <div class="day-scroller no-scrollbar mb-8">
-                <div v-for="(day, index) in itineraries" :key="day.uid" class="day-tab group">
-                    <button @click="currentDayIdx = index" 
-                        :class="['px-7 py-4 rounded-[1.5rem] font-bold text-sm min-w-[120px] transition-all border-2 flex flex-col items-center justify-center', currentDayIdx === index ? 'bg-white border-morandi-main text-morandi shadow-md' : 'bg-transparent border-transparent text-slate-400']">
-                        <span>DAY {{ index + 1 }}</span>
-                        <span class="text-[10px] font-normal opacity-60 mt-1">{{ formatDateShort(index) }}</span>
-                    </button>
-                    <div v-if="itineraries.length > 1" @click.stop="removeDay(index)" class="day-delete opacity-0 group-hover:opacity-100"><i class="fas fa-times"></i></div>
-                </div>
-            </div>
-
-            <div id="items-list" class="space-y-5">
-                <div v-for="(item, idx) in (itineraries[currentDayIdx]?.items || [])" :key="item.uid" class="mist-card p-6 relative">
-                    <div class="flex justify-between items-center mb-5">
-                        <div class="flex items-center gap-2">
-                            <div class="drag-handle"><i class="fas fa-bars"></i></div>
-                            <input v-model="item.time" type="text" class="time-input font-bold text-morandi bg-slate-50 px-4 py-2 rounded-xl w-24 text-center" readonly>
-                        </div>
-                        <button @click="removeItem(idx)" class="text-slate-200 hover:text-red-300"><i class="fas fa-times-circle"></i></button>
-                    </div>
-                    <div class="relative mb-3">
-                        <input v-model="item.loc" type="text" placeholder="-ˋˏ ♡ ˎˊ- " class="w-full text-xl font-bold text-slate-700 pr-10 border-b border-transparent focus:border-slate-100 bg-transparent">
-                        <i @click="openGoogleMap(item.loc)" class="fas fa-location-arrow absolute right-1 top-1 text-morandi-light"></i>
-                    </div>
-                    <textarea v-model="item.note" placeholder="備忘錄..." class="w-full text-sm text-slate-400 bg-slate-50/50 p-4 rounded-2xl resize-none min-h-[80px] border-none"></textarea>
-                    
-                    <div class="mt-4 flex justify-end">
-                        <button @click="openMediaModal(item)" class="attachment-btn relative">
-                            <i class="fas fa-paperclip text-sm"></i>
-                            <div v-if="(item.photos?.length || 0) + (item.links?.length || 0) > 0" class="badge-dot"></div>
-                        </button>
-                    </div>
-                </div>
-                <button @click="addItem" class="w-full border-2 border-dashed border-morandi-light/40 p-10 rounded-[2.5rem] text-morandi-light font-bold">+ 加入行程</button>
-            </div>
-        </section>
-
-        <section v-show="activeTab === 'wallet'" class="p-6">
-            <h2 class="text-3xl font-bold mb-8 text-slate-700">是免稅不是免費</h2>
-            
-            <div class="mist-card p-7 mb-8">
-                <div class="flex gap-4 mb-6">
-                    <div class="flex-1">
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">外幣種類</label>
-                        <input type="text" v-model="currencySearch" placeholder="日本..." class="w-full bg-slate-50 p-4 rounded-2xl text-sm font-bold border border-slate-100">
-                    </div>
-                    <div class="flex-1">
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">匯率</label>
-                        <input type="number" v-model.number="currentRate" step="0.0001" class="w-full bg-slate-50 p-4 rounded-2xl text-morandi-dark font-bold border border-slate-100 text-center">
-                    </div>
-                </div>
-                <div class="rounded-[2.5rem] p-8 text-white shadow-xl text-center" style="background-color: #5b7482;">
-                    <div class="text-sm font-bold opacity-60 mb-2">預估台幣 NT$ {{ Math.round((foreignAmount || 0) * (currentRate || 1)).toLocaleString() }}</div>
-                    <div class="flex items-center justify-center">
-                        <span class="text-4xl font-light mr-4 opacity-50">{{ currencySymbol }}</span>
-                        <input type="number" v-model.number="foreignAmount" inputmode="decimal" placeholder="0" class="text-5xl font-black w-full text-white bg-transparent text-center outline-none">
-                    </div>
-                </div>
-            </div>
-
-            <div class="mist-card p-7 mb-8 flex items-center border-l-8 border-morandi-main">
-                <div class="w-1/2 border-r border-slate-100 pr-4">
-                    <label class="text-[10px] text-morandi font-bold uppercase mb-2 block tracking-widest">散財童子</label>
-                    <select v-model="budgetViewMode" class="w-full bg-slate-50 py-3 px-4 rounded-2xl text-sm font-black text-slate-600 appearance-none">
-                        <option value="total">總支出</option>
-                        <option v-for="m in members" :key="m" :value="m">{{ m }}</option>
-                    </select>
-                </div>
-                <div class="w-1/2 text-right pl-4">
-                    <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">{{ budgetViewMode === 'total' ? '總額' : '應付' }} ({{currencySymbol}})</p>
-                    <p class="text-3xl font-black text-morandi-dark">{{ displayPaidAmount.toLocaleString(undefined, {maximumFractionDigits: 1}) }}</p>
-                </div>
-            </div>
-
-            <div class="space-y-6">
-                <div class="flex justify-between items-center px-2">
-                    <h3 class="font-bold text-slate-500 tracking-widest">支出項目</h3>
-                    <div class="flex gap-2">
-                        <div class="relative">
-                            <button @click.stop="ui.showMemberDropdown = !ui.showMemberDropdown" class="bg-white border border-slate-200 px-5 py-3 rounded-2xl text-slate-500 font-bold text-xs"><i class="fas fa-user-friends"></i> 旅伴</button>
-                            <div v-if="ui.showMemberDropdown" class="absolute right-0 mt-3 w-56 bg-white rounded-[2rem] shadow-2xl z-[2000] border border-slate-100">
-                                <div v-for="(m, i) in members" :key="i" class="flex justify-between items-center p-4 hover:bg-slate-50 border-b border-slate-50">
-                                    <span class="font-bold text-slate-600">{{ m }}</span>
-                                    <div class="flex gap-3">
-                                        <i @click.stop="openEditModal(i)" class="fas fa-edit text-slate-300"></i>
-                                        <i v-if="members.length > 1" @click.stop="removeMember(i)" class="fas fa-trash-alt text-slate-200"></i>
-                                    </div>
+                        <div class="space-y-4">
+                            <div v-for="(p, idx) in mediaModal.target.photos" :key="idx" class="bg-white/60 rounded-3xl p-3 flex gap-4 shadow-sm border border-white">
+                                <img :src="p.url" class="w-20 h-20 object-cover rounded-2xl shadow-inner bg-slate-100">
+                                <div class="flex-1 flex flex-col justify-between">
+                                    <input v-model="p.desc" type="text" placeholder="新增說明..." class="w-full text-xs font-medium bg-transparent border-b border-slate-100 py-1">
+                                    <button @click="mediaModal.target.photos.splice(idx, 1)" class="text-[10px] text-red-300 self-end">移除</button>
                                 </div>
-                                <button @click.stop="openAddModal(); ui.showMemberDropdown = false;" class="w-full p-4 btn-primary font-bold text-xs">+ 新增成員</button>
-                            </div>
-                        </div>
-                        <button @click="addBill" class="btn-primary px-6 py-3 rounded-2xl font-bold text-xs">一直花錢錢</button>
-                    </div>
-                </div>
-
-                <div v-for="(bill, bi) in bills" :key="bi" class="mist-card p-6 relative">
-                    <div class="flex gap-4 mb-6">
-                        <div class="w-1/4">
-                            <label class="text-[10px] font-bold text-morandi-light block">天數</label>
-                            <select v-model="bill.day" class="w-full bg-slate-50 rounded-xl p-3 text-xs font-black">
-                                <option v-for="(d, i) in itineraries" :value="i+1">D{{i+1}}</option>
-                            </select>
-                        </div>
-                        <div class="w-2/4">
-                            <label class="text-[10px] font-bold text-morandi-light block">項目</label>
-                            <input v-model="bill.title" type="text" class="w-full font-bold text-slate-700 border-b border-slate-100 p-1 bg-transparent">
-                        </div>
-                        <div class="w-1/4">
-                            <label class="text-[10px] font-bold text-morandi-dark block text-left">金額 ({{currencySymbol}})</label>
-                            <input v-model.number="bill.amount" type="number" class="w-full font-black text-morandi-dark border-b border-morandi-light/30 p-1 text-right bg-transparent">
-                        </div>
-                    </div>
-                    <div class="flex gap-5">
-                        <div class="w-2/5">
-                            <label class="text-[10px] font-bold text-morandi uppercase block mb-2">乾爹੭ ᐕ)੭ </label>
-                            <select v-model="bill.payer" class="w-full bg-slate-100 rounded-2xl px-4 py-3 text-xs font-black appearance-none sync-height">
-                                <option v-for="m in members" :value="m">{{ m }}</option>
-                            </select>
-                        </div>
-                        <div class="w-3/5">
-                            <label class="text-[10px] font-bold text-morandi uppercase block mb-2">一起散財ˎ₍•ʚ•₎ˏ </label>
-                            <div class="flex gap-2 overflow-x-auto no-scrollbar py-1">
-                                <button v-for="m in members" @click="toggleBillMember(bi, m)" :class="['split-btn', bill.splitWith.includes(m) ? 'split-active' : 'split-inactive']">{{ m }}</button>
                             </div>
                         </div>
                     </div>
-                    <button @click="removeBill(bi)" class="absolute top-4 right-4 text-slate-200"><i class="fas fa-times-circle"></i></button>
-                </div>
-
-                <div v-if="settlement.length > 0" class="rounded-[3rem] p-10 text-white shadow-2xl mt-12 relative overflow-hidden" style="background-color: #5b7482;">
-                    <h4 class="text-center font-black mb-8 text-xs opacity-40 uppercase tracking-[0.4em]">Settlement</h4>
-                    <div class="space-y-4">
-                        <div v-for="res in settlement" :key="res.from + res.to" class="flex justify-between items-center bg-white/10 p-6 rounded-3xl backdrop-blur-md">
-                            <div class="flex items-center gap-4"><span class="text-xs font-bold text-white/70">{{ res.from }}</span><i class="fas fa-chevron-right text-white/20 text-[10px]"></i><span class="text-xs font-bold text-white">{{ res.to }}</span></div>
-                            <div class="text-right">
-                                <div class="text-xl font-black">{{ currencySymbol }} {{ res.amount.toLocaleString(undefined, {maximumFractionDigits: 1}) }}</div>
-                                <div class="text-[10px] font-bold opacity-60">≈ NT$ {{ Math.round(res.amount * currentRate).toLocaleString() }}</div>
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest">參考連結</label>
+                            <button @click="addLink" class="text-[10px] bg-white border border-morandi-light text-morandi-dark px-3 py-1.5 rounded-xl font-bold shadow-sm">+ 新增</button>
+                        </div>
+                        <div class="space-y-3">
+                            <div v-for="(l, idx) in mediaModal.target.links" :key="idx" class="bg-white/60 rounded-2xl p-4 border border-white shadow-sm">
+                                <div class="flex justify-between items-center mb-2">
+                                    <input v-model="l.name" type="text" placeholder="這是什麼" class="w-full text-xs font-bold text-slate-600 bg-transparent">
+                                    <button @click="mediaModal.target.links.splice(idx, 1)" class="text-slate-300 ml-2"><i class="fas fa-trash-alt text-xs"></i></button>
+                                </div>
+                                <input v-model="l.url" type="text" placeholder="貼上網址..." class="w-full text-[10px] text-blue-400/70 italic bg-transparent">
                             </div>
                         </div>
                     </div>
                 </div>
+                <div class="p-8"><button @click="mediaModal.show = false" class="w-full btn-primary py-4 rounded-2xl font-bold shadow-lg">完成</button></div>
             </div>
-        </section>
-    </main>
+        </div>
 
-    <nav v-if="!showWizard && !ui.isLoading" class="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-xs nav-morandi rounded-[2.5rem] shadow-2xl px-8 py-5 z-[4000] flex justify-around items-center border border-white/10">
-        <div @click="activeTab = 'itinerary'" :class="['flex flex-col items-center gap-1.5 cursor-pointer', activeTab === 'itinerary' ? 'text-white scale-110' : 'text-white/40']">
-            <i class="fas fa-map-marked-alt text-xl"></i><span class="text-[9px] font-black uppercase tracking-widest">行程</span>
+        <div v-if="showWizard" class="fixed inset-0 z-[2000] bg-[#5b7482] flex flex-col items-center justify-center p-10 gap-6">
+            <div class="text-white text-center mb-4"><i class="fas fa-compass text-6xl mb-4"></i><h2 class="text-3xl font-bold tracking-widest uppercase">LET'S GO</h2></div>
+            <input v-model="trip.name" type="text" placeholder="行程名稱" class="w-full max-w-xs p-5 rounded-3xl bg-white text-center font-bold">
+            <input id="wiz-date-range" type="text" placeholder="選擇日期" class="w-full max-w-xs p-5 rounded-3xl bg-white text-center font-bold" readonly>
+            <button @click="startJourney" class="w-full max-w-xs bg-white text-[#5b7482] p-5 rounded-3xl font-black shadow-2xl">START</button>
         </div>
-        <div @click="activeTab = 'wallet'" :class="['flex flex-col items-center gap-1.5 cursor-pointer', activeTab === 'wallet' ? 'text-white scale-110' : 'text-white/40']">
-            <i class="fas fa-wallet text-xl"></i><span class="text-[9px] font-black uppercase tracking-widest">錢包</span>
-        </div>
-    </nav>
+
+        <main v-if="!showWizard">
+            <section v-show="activeTab === 'itinerary'" class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 class="text-3xl font-bold text-slate-700 mb-2">
+                            {{ trip.name || '未命名行程' }}
+                            <i @click="openTripNameModal" class="fas fa-pen-nib edit-icon"></i>
+                        </h2>
+                        <div class="date-adjust-bar shadow-sm" id="date-adjuster">
+                            <i class="far fa-calendar-alt text-morandi-main text-xs"></i>
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">設定起始日: {{ formatDateLong(0) }}</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button @click="sortItems" class="bg-white text-morandi p-3 rounded-2xl shadow-sm"><i class="fas fa-sort-amount-down-alt"></i></button>
+                        <button @click="addDay" class="btn-primary px-5 py-3 rounded-2xl font-bold text-xs">+ 天數</button>
+                    </div>
+                </div>
+
+                <div class="day-scroller no-scrollbar mb-8">
+                    <div v-for="(day, index) in itineraries" :key="day.uid" class="day-tab group">
+                        <button @click="currentDayIdx = index" 
+                            :class="['px-7 py-4 rounded-[1.5rem] font-bold text-sm min-w-[120px] transition-all border-2 flex flex-col items-center justify-center', currentDayIdx === index ? 'bg-white border-morandi-main text-morandi shadow-md' : 'bg-transparent border-transparent text-slate-400']">
+                            <span>DAY {{ index + 1 }}</span>
+                            <span class="text-[10px] font-normal opacity-60 mt-1">{{ formatDateShort(index) }}</span>
+                        </button>
+                        <div v-if="itineraries.length > 1" @click.stop="removeDay(index)" class="day-delete opacity-0 group-hover:opacity-100"><i class="fas fa-times"></i></div>
+                    </div>
+                </div>
+
+                <div id="items-list" class="space-y-5">
+                    <div v-for="(item, idx) in (itineraries[currentDayIdx]?.items || [])" :key="item.uid" class="mist-card p-6 relative">
+                        <div class="flex justify-between items-center mb-5">
+                            <div class="flex items-center gap-2">
+                                <div class="drag-handle"><i class="fas fa-bars"></i></div>
+                                <input v-model="item.time" type="text" class="time-input font-bold text-morandi bg-slate-50 px-4 py-2 rounded-xl w-24 text-center" readonly>
+                            </div>
+                            <button @click="removeItem(idx)" class="text-slate-200 hover:text-red-300"><i class="fas fa-times-circle"></i></button>
+                        </div>
+                        <div class="relative mb-3">
+                            <input v-model="item.loc" type="text" placeholder="-ˋˏ ♡ ˎˊ- " class="w-full text-xl font-bold text-slate-700 pr-10 border-b border-transparent focus:border-slate-100 bg-transparent">
+                            <i @click="openGoogleMap(item.loc)" class="fas fa-location-arrow absolute right-1 top-1 text-morandi-light"></i>
+                        </div>
+                        <textarea v-model="item.note" placeholder="備忘錄..." class="w-full text-sm text-slate-400 bg-slate-50/50 p-4 rounded-2xl resize-none min-h-[80px] border-none"></textarea>
+                        
+                        <div class="mt-4 flex justify-end">
+                            <button @click="openMediaModal(item)" class="attachment-btn relative">
+                                <i class="fas fa-paperclip text-sm"></i>
+                                <div v-if="(item.photos?.length || 0) + (item.links?.length || 0) > 0" class="badge-dot"></div>
+                            </button>
+                        </div>
+                    </div>
+                    <button @click="addItem" class="w-full border-2 border-dashed border-morandi-light/40 p-10 rounded-[2.5rem] text-morandi-light font-bold">+ 加入行程</button>
+                </div>
+            </section>
+
+            <section v-show="activeTab === 'wallet'" class="p-6">
+                <h2 class="text-3xl font-bold mb-8 text-slate-700">是免稅不是免費</h2>
+                <div class="mist-card p-7 mb-8">
+                    <div class="flex gap-4 mb-6">
+                        <div class="flex-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">外幣種類</label>
+                            <input type="text" v-model="currencySearch" placeholder="日本..." class="w-full bg-slate-50 p-4 rounded-2xl text-sm font-bold border border-slate-100">
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">匯率</label>
+                            <input type="number" v-model.number="currentRate" step="0.0001" class="w-full bg-slate-50 p-4 rounded-2xl text-morandi-dark font-bold border border-slate-100 text-center">
+                        </div>
+                    </div>
+                    <div class="rounded-[2.5rem] p-8 text-white shadow-xl text-center" style="background-color: #5b7482;">
+                        <div class="text-sm font-bold opacity-60 mb-2">預估台幣 NT$ {{ Math.round((foreignAmount || 0) * (currentRate || 1)).toLocaleString() }}</div>
+                        <div class="flex items-center justify-center">
+                            <span class="text-4xl font-light mr-4 opacity-50">{{ currencySymbol }}</span>
+                            <input type="number" v-model.number="foreignAmount" inputmode="decimal" placeholder="0" class="text-5xl font-black w-full text-white bg-transparent text-center outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mist-card p-7 mb-8 flex items-center border-l-8 border-morandi-main">
+                    <div class="w-1/2 border-r border-slate-100 pr-4">
+                        <label class="text-[10px] text-morandi font-bold uppercase mb-2 block tracking-widest">散財童子</label>
+                        <select v-model="budgetViewMode" class="w-full bg-slate-50 py-3 px-4 rounded-2xl text-sm font-black text-slate-600 appearance-none">
+                            <option value="total">總支出</option>
+                            <option v-for="m in members" :key="m" :value="m">{{ m }}</option>
+                        </select>
+                    </div>
+                    <div class="w-1/2 text-right pl-4">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">{{ budgetViewMode === 'total' ? '總額' : '應付' }} ({{currencySymbol}})</p>
+                        <p class="text-3xl font-black text-morandi-dark">{{ displayPaidAmount.toLocaleString(undefined, {maximumFractionDigits: 1}) }}</p>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="flex justify-between items-center px-2">
+                        <h3 class="font-bold text-slate-500 tracking-widest">支出項目</h3>
+                        <div class="flex gap-2">
+                            <div class="relative">
+                                <button @click.stop="ui.showMemberDropdown = !ui.showMemberDropdown" class="bg-white border border-slate-200 px-5 py-3 rounded-2xl text-slate-500 font-bold text-xs"><i class="fas fa-user-friends"></i> 旅伴</button>
+                                <div v-if="ui.showMemberDropdown" class="absolute right-0 mt-3 w-56 bg-white rounded-[2rem] shadow-2xl z-[2000] border border-slate-100">
+                                    <div v-for="(m, i) in members" :key="i" class="flex justify-between items-center p-4 hover:bg-slate-50 border-b border-slate-50">
+                                        <span class="font-bold text-slate-600">{{ m }}</span>
+                                        <div class="flex gap-3">
+                                            <i @click.stop="openEditModal(i)" class="fas fa-edit text-slate-300"></i>
+                                            <i v-if="members.length > 1" @click.stop="removeMember(i)" class="fas fa-trash-alt text-slate-200"></i>
+                                        </div>
+                                    </div>
+                                    <button @click.stop="openAddModal(); ui.showMemberDropdown = false;" class="w-full p-4 btn-primary font-bold text-xs">+ 新增成員</button>
+                                </div>
+                            </div>
+                            <button @click="addBill" class="btn-primary px-6 py-3 rounded-2xl font-bold text-xs">一直花錢錢</button>
+                        </div>
+                    </div>
+
+                    <div v-for="(bill, bi) in bills" :key="bi" class="mist-card p-6 relative">
+                        <div class="flex gap-4 mb-6">
+                            <div class="w-1/4">
+                                <label class="text-[10px] font-bold text-morandi-light block">天數</label>
+                                <select v-model="bill.day" class="w-full bg-slate-50 rounded-xl p-3 text-xs font-black">
+                                    <option v-for="(d, i) in itineraries" :value="i+1">D{{i+1}}</option>
+                                </select>
+                            </div>
+                            <div class="w-2/4">
+                                <label class="text-[10px] font-bold text-morandi-light block">項目</label>
+                                <input v-model="bill.title" type="text" class="w-full font-bold text-slate-700 border-b border-slate-100 p-1 bg-transparent">
+                            </div>
+                            <div class="w-1/4">
+                                <label class="text-[10px] font-bold text-morandi-dark block text-left">金額 ({{currencySymbol}})</label>
+                                <input v-model.number="bill.amount" type="number" class="w-full font-black text-morandi-dark border-b border-morandi-light/30 p-1 text-right bg-transparent">
+                            </div>
+                        </div>
+                        <div class="flex gap-5">
+                            <div class="w-2/5">
+                                <label class="text-[10px] font-bold text-morandi uppercase block mb-2">乾爹੭ ᐕ)੭ </label>
+                                <select v-model="bill.payer" class="w-full bg-slate-100 rounded-2xl px-4 py-3 text-xs font-black appearance-none sync-height">
+                                    <option v-for="m in members" :value="m">{{ m }}</option>
+                                </select>
+                            </div>
+                            <div class="w-3/5">
+                                <label class="text-[10px] font-bold text-morandi uppercase block mb-2">一起散財ˎ₍•ʚ•₎ˏ </label>
+                                <div class="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                                    <button v-for="m in members" @click="toggleBillMember(bi, m)" :class="['split-btn', bill.splitWith.includes(m) ? 'split-active' : 'split-inactive']">{{ m }}</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button @click="removeBill(bi)" class="absolute top-4 right-4 text-slate-200"><i class="fas fa-times-circle"></i></button>
+                    </div>
+
+                    <div v-if="settlement.length > 0" class="rounded-[3rem] p-10 text-white shadow-2xl mt-12 relative overflow-hidden" style="background-color: #5b7482;">
+                        <h4 class="text-center font-black mb-8 text-xs opacity-40 uppercase tracking-[0.4em]">Settlement</h4>
+                        <div class="space-y-4">
+                            <div v-for="res in settlement" :key="res.from + res.to" class="flex justify-between items-center bg-white/10 p-6 rounded-3xl backdrop-blur-md">
+                                <div class="flex items-center gap-4"><span class="text-xs font-bold text-white/70">{{ res.from }}</span><i class="fas fa-chevron-right text-white/20 text-[10px]"></i><span class="text-xs font-bold text-white">{{ res.to }}</span></div>
+                                <div class="text-right">
+                                    <div class="text-xl font-black">{{ currencySymbol }} {{ res.amount.toLocaleString(undefined, {maximumFractionDigits: 1}) }}</div>
+                                    <div class="text-[10px] font-bold opacity-60">≈ NT$ {{ Math.round(res.amount * currentRate).toLocaleString() }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <nav v-if="!showWizard" class="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-xs nav-morandi rounded-[2.5rem] shadow-2xl px-8 py-5 z-[4000] flex justify-around items-center border border-white/10">
+            <div @click="activeTab = 'itinerary'" :class="['flex flex-col items-center gap-1.5 cursor-pointer', activeTab === 'itinerary' ? 'text-white scale-110' : 'text-white/40']">
+                <i class="fas fa-map-marked-alt text-xl"></i><span class="text-[9px] font-black uppercase tracking-widest">行程</span>
+            </div>
+            <div @click="activeTab = 'wallet'" :class="['flex flex-col items-center gap-1.5 cursor-pointer', activeTab === 'wallet' ? 'text-white scale-110' : 'text-white/40']">
+                <i class="fas fa-wallet text-xl"></i><span class="text-[9px] font-black uppercase tracking-widest">錢包</span>
+            </div>
+        </nav>
+    </div>
 </div>
 
 <script type="module">
@@ -316,13 +328,14 @@
 
     const fbApp = initializeApp(firebaseConfig);
     const db = getDatabase(fbApp);
-    const tripRef = ref(db, 'trip_data_2026');
+    const auth = getAuth();
+    const provider = new GoogleAuthProvider();
 
     const { createApp, ref: vueRef, reactive, onMounted, computed, watch, nextTick } = Vue;
 
     createApp({
         setup() {
-            // 初始 showWizard 設為 false，由 isLoading 統一控制遮罩，防止資料加載前的跳閃
+            const currentUser = vueRef(null);
             const showWizard = vueRef(false); 
             const activeTab = vueRef('itinerary');
             const trip = reactive({ name: '' });
@@ -348,23 +361,8 @@
 
             const generateUID = () => Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
 
-            const auth = getAuth();
-            const provider = new GoogleAuthProvider();
-            const currentUser = Vue.ref(null);
-
-            // 監聽登入狀態
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    currentUser.value = user;
-                    // 登入後才開始監聽資料庫
-                    loadDataFromFirebase(); 
-                } else {
-                    currentUser.value = null;
-                }
-            });
-
             const login = () => {
-                signInWithPopup(auth, provider).catch(error => alert(error.message));
+                signInWithPopup(auth, provider).catch(error => alert("登入失敗：" + error.message));
             };
 
             const updateAllDates = () => {
@@ -379,16 +377,13 @@
 
             const initPickers = () => {
                 nextTick(() => { 
-                    // 初始化時間選擇
                     flatpickr(".time-input", { 
                         enableTime: true, noCalendar: true, dateFormat: "H:i", 
                         time_24hr: true, disableMobile: true 
                     }); 
-                    // 初始化 Wizard 的日期範圍
                     if (document.getElementById('wiz-date-range')) {
                         flatpickr("#wiz-date-range", { mode: "range", disableMobile: true });
                     }
-                    // 初始化起始日調整
                     const adj = document.getElementById('date-adjuster');
                     if(adj && itineraries.value[0]) {
                         flatpickr("#date-adjuster", {
@@ -417,6 +412,30 @@
                             items.splice(evt.newIndex, 0, moved);
                             itineraries.value[currentDayIdx.value].items = items;
                         }
+                    });
+                });
+            };
+
+            const loadDataFromFirebase = () => {
+                const tripRef = ref(db, 'trip_data_2026');
+                onValue(tripRef, (snapshot) => {
+                    const data = snapshot.val();
+                    ui.isIgnoreWatch = true; 
+                    if (data && data.itineraries && data.itineraries.length > 0) {
+                        trip.name = data.trip?.name || '';
+                        itineraries.value = data.itineraries;
+                        members.value = data.members || ['我', '旅伴'];
+                        bills.value = data.bills || [];
+                        currentRate.value = data.currentRate || 0.215;
+                        showWizard.value = false;
+                    } else {
+                        showWizard.value = true;
+                    }
+                    ui.isLoading = false; 
+                    nextTick(() => { 
+                        ui.isIgnoreWatch = false; 
+                        initPickers(); 
+                        initSortable(); 
                     });
                 });
             };
@@ -458,7 +477,6 @@
             };
             const formatDateLong = (i) => itineraries.value[i] ? `${itineraries.value[i].date}(${getWeekDay(itineraries.value[i].date)})` : '';
 
-            // 重要：監聽分頁與天數切換，重新掛載功能按鍵
             watch([activeTab, currentDayIdx], () => { 
                 initSortable(); 
                 initPickers(); 
@@ -470,31 +488,25 @@
             });
 
             onMounted(() => {
-                onValue(tripRef, (snapshot) => {
-                    const data = snapshot.val();
-                    ui.isIgnoreWatch = true; 
-                    if (data && data.itineraries && data.itineraries.length > 0) {
-                        trip.name = data.trip?.name || '';
-                        itineraries.value = data.itineraries;
-                        members.value = data.members || ['我', '旅伴'];
-                        bills.value = data.bills || [];
-                        currentRate.value = data.currentRate || 0.215;
-                        showWizard.value = false;
+                // 註冊 Service Worker
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW 註冊失敗', err));
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUser.value = user;
+                        loadDataFromFirebase(); 
                     } else {
-                        // 若雲端完全無資料，才顯示 Wizard
-                        showWizard.value = true;
+                        currentUser.value = null;
+                        ui.isLoading = false; 
                     }
-                    ui.isLoading = false; 
-                    nextTick(() => { 
-                        ui.isIgnoreWatch = false; 
-                        initPickers(); 
-                        initSortable(); 
-                    });
-                }, { onlyOnce: false });
+                });
             });
 
             watch([trip, itineraries, members, bills, currentRate], () => {
-                if (ui.isIgnoreWatch || ui.isLoading) return;
+                if (ui.isIgnoreWatch || ui.isLoading || !currentUser.value) return;
+                const tripRef = ref(db, 'trip_data_2026');
                 set(tripRef, {
                     trip: { name: trip.name },
                     itineraries: itineraries.value,
@@ -505,7 +517,7 @@
             }, { deep: true });
 
             return {
-                showWizard, activeTab, trip, itineraries, currentDayIdx, members, bills, budgetViewMode,
+                currentUser, login, showWizard, activeTab, trip, itineraries, currentDayIdx, members, bills, budgetViewMode,
                 currencySearch, currencySymbol, currentRate, foreignAmount, displayPaidAmount, settlement, ui, modal,
                 mediaModal, tempTripName, formatDateShort, formatDateLong,
                 openTripNameModal: () => { tempTripName.value = trip.name; ui.showTripNameModal = true; },
@@ -521,8 +533,11 @@
                 addLink: () => mediaModal.target.links.push({ name: '', url: '' }),
                 startJourney: () => {
                     const val = document.getElementById('wiz-date-range').value; if(!val) return;
-                    const start = new Date(val.split(" to ")[0]);
-                    const diff = val.includes(" to ") ? Math.ceil((new Date(val.split(" to ")[1]) - start) / 86400000) + 1 : 1;
+                    const startStr = val.split(" to ")[0];
+                    const endStr = val.includes(" to ") ? val.split(" to ")[1] : startStr;
+                    const start = new Date(startStr);
+                    const end = new Date(endStr);
+                    const diff = Math.ceil((end - start) / 86400000) + 1;
                     itineraries.value = Array.from({ length: diff }, (_, i) => {
                         const d = new Date(start); d.setDate(start.getDate() + i);
                         return { date: d.toISOString().split('T')[0], items: [], uid: generateUID() };
@@ -555,9 +570,7 @@
                 openAddModal: () => { modal.type='add'; modal.title='新增旅伴'; modal.inputValue=''; modal.show=true; },
                 openEditModal: (i) => { modal.type='edit'; modal.editIndex=i; modal.title='編輯姓名'; modal.inputValue=members.value[i]; modal.show=true; },
                 confirmModal: () => { if(modal.type==='add') { if(modal.inputValue) members.value.push(modal.inputValue); } else { members.value[modal.editIndex]=modal.inputValue; } modal.show=false; },
-                openGoogleMap: (loc) => { 
-    if(loc) window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank'); 
-}
+                openGoogleMap: (loc) => { if(loc) window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank'); }
             };
         }
     }).mount('#app');
