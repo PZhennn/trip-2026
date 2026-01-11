@@ -302,6 +302,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAxyJNRALZjiCQZWsRpU2tlRMfncEToDGo",
@@ -346,6 +347,25 @@
             const mediaModal = reactive({ show: false, target: null });
 
             const generateUID = () => Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+
+            const auth = getAuth();
+            const provider = new GoogleAuthProvider();
+            const currentUser = Vue.ref(null);
+
+            // 監聽登入狀態
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser.value = user;
+                    // 登入後才開始監聽資料庫
+                    loadDataFromFirebase(); 
+                } else {
+                    currentUser.value = null;
+                }
+            });
+
+            const login = () => {
+                signInWithPopup(auth, provider).catch(error => alert(error.message));
+            };
 
             const updateAllDates = () => {
                 if (itineraries.value.length === 0) return;
