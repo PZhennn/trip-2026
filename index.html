@@ -357,6 +357,7 @@
             const tempTripName = vueRef('');
 
             const login = () => {
+                ui.isLoading = true;
                 signInWithRedirect(auth, provider);
             };
 
@@ -493,26 +494,31 @@
                 for(let k in list) { if(v.includes(k)) { currentRate.value=list[k]; currencySymbol.value=(k==='美'?'$':k==='韓'?'₩':k==='泰'?'฿':k==='歐'?'€':'¥'); break; }}
             });
 
-            onMounted(() => {
-                getRedirectResult(auth).then((result) => {
-                        if (result?.user) {
-                            currentUser.value = result.user;
-                            loadDataFromFirebase();
-                        }
-                    }).catch((error) => {
-                        console.error("登入跳轉錯誤:", error);
-                    });
-            
-                onAuthStateChanged(auth, (user) => {
-                        if (user) {
-                            currentUser.value = user;
-                            loadDataFromFirebase(); 
-                        } else {
-                            currentUser.value = null;
-                            ui.isLoading = false; 
-                        }
-                    });
+            onMounted(async () => {
+                ui.isLoading = true; 
+
+                try {
+                    const result = await getRedirectResult(auth);
+                    if (result?.user) {
+                        currentUser.value = result.user;
+                        await loadDataFromFirebase();
+                        ui.isLoading = false;
+                        return; // 如果已經抓到跳轉結果，直接結束
+                    }
+                } catch (error) {
+                    console.error("處理跳轉登入失敗:", error);
+                }
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUser.value = user;
+                        await loadDataFromFirebase();
+                    } else {
+                        currentUser.value = null;
+                    }
+                    ui.isLoading = false; 
                 });
+            });
 
             watch([trip, itineraries, members, bills, currentRate], () => {
                 if (ui.isIgnoreWatch || ui.isLoading || !currentUser.value) return;
