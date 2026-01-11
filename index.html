@@ -314,7 +314,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-    import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAxyJNRALZjiCQZWsRpU2tlRMfncEToDGo",
@@ -488,27 +488,25 @@
             });
 
             onMounted(() => {
-                getRedirectResult(auth)
-                    .then((result) => {
-                        if (result && result.user) {
+                getRedirectResult(auth).then((result) => {
+                        if (result?.user) {
                             currentUser.value = result.user;
-                            console.log("跳轉登入成功:", result.user.email); }
-                    })
-                    .catch((error) => {
-                        console.error("登入錯誤:", error.message);
-                        alert("登入失敗: " + error.message);
+                            loadDataFromFirebase();
+                        }
+                    }).catch((error) => {
+                        console.error("登入跳轉錯誤:", error);
                     });
             
                 onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        currentUser.value = user;
-                        loadDataFromFirebase();
-                    } else {
-                        currentUser.value = null;
-                        ui.isLoading = false;
-                    }
+                        if (user) {
+                            currentUser.value = user;
+                            loadDataFromFirebase(); 
+                        } else {
+                            currentUser.value = null;
+                            ui.isLoading = false; 
+                        }
+                    });
                 });
-            });
 
             watch([trip, itineraries, members, bills, currentRate], () => {
                 if (ui.isIgnoreWatch || ui.isLoading || !currentUser.value) return;
