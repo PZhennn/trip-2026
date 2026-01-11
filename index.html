@@ -314,7 +314,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAxyJNRALZjiCQZWsRpU2tlRMfncEToDGo",
@@ -360,8 +360,6 @@
             const mediaModal = reactive({ show: false, target: null });
 
             const generateUID = () => Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-
-            import { signInWithRedirect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"; 
 
             const login = () => {
                 signInWithRedirect(auth, provider);
@@ -490,7 +488,6 @@
             });
 
             onMounted(() => {
-                // 註冊 Service Worker
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW 註冊失敗', err));
                 }
@@ -573,7 +570,7 @@
                 openEditModal: (i) => { modal.type='edit'; modal.editIndex=i; modal.title='編輯姓名'; modal.inputValue=members.value[i]; modal.show=true; },
                 confirmModal: () => { if(modal.type==='add') { if(modal.inputValue) members.value.push(modal.inputValue); } else { members.value[modal.editIndex]=modal.inputValue; } modal.show=false; },
                 openGoogleMap: (loc) => { 
-                    if(loc) window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank'); }
+                    if(loc) window.open(`http://googleusercontent.com/maps.google.com/?q=${encodeURIComponent(loc)}`, '_blank'); }
             };
         }
     }).mount('#app');
