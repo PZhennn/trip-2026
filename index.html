@@ -592,7 +592,7 @@
                 removeMember: (i) => { if(confirm("移除成員？")) { members.value.splice(i,1); ui.showMemberDropdown = false; } },
                 openAddModal: () => { modal.type='add'; modal.title='新增旅伴'; modal.inputValue=''; modal.show=true; },
                 openEditModal: (i) => { modal.type='edit'; modal.editIndex=i; modal.title='編輯姓名'; modal.inputValue=members.value[i]; modal.show=true; },
-               confirmModal: () => { 
+confirmModal: () => { 
                     if(modal.type==='add') { 
                         if(modal.inputValue) members.value.push(modal.inputValue); 
                     } else { 
@@ -602,15 +602,16 @@
                 },
                 openGoogleMap: (loc) => { 
                     if (loc) { 
+                        // 修正了之前 URL 拼字與符號錯誤
                         const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
                         window.open(url, '_blank');
                     } else {
                         alert("請先輸入地點名稱");
                     }
                 }
-            }; 
-        } 
-    }).mount('#app'); 
+            }; // return 結束
+        } // setup 結束
+    }).mount('#app'); // Vue 掛載結束，後面不應該有任何符號
 
     // 註冊 Service Worker
     if ('serviceWorker' in navigator) {
