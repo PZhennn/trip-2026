@@ -30,6 +30,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
+  // 關鍵修正：如果是 Firebase 驗證請求或帶有 query 參數的請求，絕對不讀取快取
   if (url.search || url.pathname.includes('__auth') || url.hostname.includes('firebaseapp.com')) {
     return; 
   }
