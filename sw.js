@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trip-planner-v4'; 
+const CACHE_NAME = 'trip-planner-v5'; 
 const URLS_TO_CACHE = [
   './',
   './manifest.json',
