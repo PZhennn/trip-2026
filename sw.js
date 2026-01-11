@@ -1,7 +1,6 @@
-const CACHE_NAME = 'trip-planner-v1';
+const CACHE_NAME = 'trip-planner-v2'; // 更改版本號以強制更新
 const URLS_TO_CACHE = [
   './',
-  './index.html',
   './manifest.json',
   'https://unpkg.com/vue@3/dist/vue.global.js',
   'https://cdn.tailwindcss.com',
@@ -15,9 +14,26 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(URLS_TO_CACHE))
   );
+  self.skipWaiting(); // 強制讓新的 SW 立即生效
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.map(key => {
+        if (key !== CACHE_NAME) return caches.delete(key);
+      })
+    ))
+  );
 });
 
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+
+  if (url.search || url.pathname.includes('__auth') || url.hostname.includes('firebaseapp.com')) {
+    return; 
+  }
+
   event.respondWith(
     caches.match(event.request).then(response => {
       return response || fetch(event.request);
